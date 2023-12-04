@@ -1,0 +1,11 @@
+{
+  "name":"unlimited-cc",
+  "author":"FoxLBA",
+  "version": "1.0.0",
+  "title":"A Truly Unlimited Constant Combinator",
+  "homepage":"",
+  "description":"A constant combinator that can emit all possible signals at once.",
+  "dependencies": ["base"],
+  "factorio_version": "1.1",
+  "package": {"ignore": ["README.md"]}
+}
