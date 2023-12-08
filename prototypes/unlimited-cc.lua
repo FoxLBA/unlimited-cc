@@ -216,6 +216,7 @@ config_dummy.flags =
 }
 config_dummy.allow_copy_paste = false
 config_dummy.sprites = { filename = "__unlimited-cc__/graphics/empty.png", size = 1 }
+config_dummy.activity_led_sprites = { filename = "__unlimited-cc__/graphics/empty.png", size = 1 }
 config_dummy.draw_circuit_wires = false
 data:extend({config_dummy})
 

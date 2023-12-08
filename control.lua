@@ -96,12 +96,16 @@ script.on_event(defines.events.on_gui_value_changed, BigConstant.on_gui_value_ch
 script.on_event(defines.events.on_gui_switch_state_changed, BigConstant.on_gui_switch_state_changed)
 script.on_event(defines.events.on_entity_settings_pasted, BigConstant.on_entity_settings_pasted)
 
+script.on_event(defines.events.on_post_entity_died, BigConstant.on_post_entity_died, {{filter = "type", type = "constant-combinator"}})
 script.on_event(defines.events.on_entity_destroyed, BigConstant.on_destroyed)
----@diagnostic disable: assign-type-mismatch
-script.on_event({
-  defines.events.on_built_entity,
-  defines.events.on_entity_cloned,
-  defines.events.on_robot_built_entity,
-  defines.events.script_raised_built,
-  defines.events.script_raised_revive,
-}, on_built)
+local filter = {
+  {filter = "name", name = "ucc-constant-combinator"},
+  {filter = "name", name = "ucc-config-storage"},
+  {filter = "ghost_name", name = "ucc-constant-combinator"},
+  {filter = "ghost_name", name = "ucc-config-storage"},
+}
+script.on_event(defines.events.on_built_entity, on_built, filter)
+script.on_event(defines.events.on_entity_cloned, on_built, filter)
+script.on_event(defines.events.on_robot_built_entity, on_built, filter)
+script.on_event(defines.events.script_raised_built, on_built, filter)
+script.on_event(defines.events.script_raised_revive, on_built, filter)

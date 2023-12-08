@@ -1,7 +1,7 @@
 {
   "name":"unlimited-cc",
   "author":"FoxLBA",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "title":"A Truly Unlimited Constant Combinator",
   "homepage":"",
   "description":"A constant combinator that can emit all possible signals at once.",

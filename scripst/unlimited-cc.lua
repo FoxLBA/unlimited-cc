@@ -51,7 +51,7 @@ function BigConstant.on_build(entity, event)
 
   --CONFIG
   elseif entity.name == CONFIG_NAME then
-    if event.stack and event.stack.name == CONFIG_NAME then
+    if event.stack and event.stack.valid_for_read and event.stack.name == CONFIG_NAME then
       entity.destroy() --unwanted manual build
     else
       --CONFIG / instant build in editor
@@ -100,6 +100,9 @@ function BigConstant.on_ghost_build(entity, event)
       local tick = event.tick
       if main_g and (main_g.build_tick < tick) then
         main_g.build_tick = tick
+        if main[1].tags and main[1].tags["ucc-settings"] then
+          main[1].tags = nil
+        end
         --destroy old config ghosts
         local conf_g = find_ghosts(entity, CONFIG_NAME)
         for _, c in pairs(conf_g) do
@@ -127,12 +130,19 @@ function BigConstant.on_ghost_build(entity, event)
   end
 end
 
+function BigConstant.on_post_entity_died(event)
+  if event.ghost and event.ghost.ghost_name == "ucc-constant-combinator" then
+    local comb = global.combinators[event.unit_number] ---@cast comb SignalStorage
+    if comb then event.ghost.tags = comb:serialize() end
+  end
+end
+
 function BigConstant.on_destroyed(event)
   local unit_number = event.unit_number
   if not unit_number then return end
 
   --MAIN
-  local comb = global.combinators[unit_number]
+  local comb = global.combinators[unit_number] ---@cast comb SignalStorage
   if comb then
     for _, player in pairs(game.players) do
       -- Close gui

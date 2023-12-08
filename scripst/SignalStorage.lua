@@ -40,6 +40,13 @@ function SignalStorage:new(entity, event)
     label_backup = {},
   }
   setmetatable(obj, self)
+  if event.tags and event.tags["ucc-settings"] then
+    for _, t in pairs(event.tags["ucc-settings"].signals) do
+      for _, slot in pairs(t) do
+        obj:change_or_add_signal(slot.signal.signal, slot.signal.count, slot.state)
+      end
+    end
+  end
   return obj
 end
 
@@ -49,6 +56,10 @@ function SignalStorage:destroy()
       if c.behavior.valid then c.behavior.entity.destroy() end
     end
   end
+end
+
+function SignalStorage:serialize()
+  return {["ucc-settings"] = {signals = table.deepcopy(self.signals)}}
 end
 
 ---@param val boolean
