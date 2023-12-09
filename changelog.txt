@@ -1,8 +1,9 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.1
-Date: ????
+Date: 2023-12-09
   Features:
     - Saving combinator settinds in ghots after destroy.
+    - Added the possibility to customize label icons (visible in alt-mode).
     - Small internal optimizations.
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.0

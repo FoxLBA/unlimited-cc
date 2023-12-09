@@ -20,6 +20,7 @@
 ---@field off_store SignalStorage.Store[]
 ---@field total_space table<integer, integer>
 ---@field build_tick integer
+---@field label_backup table
 local SignalStorage = {}
 SignalStorage.__index = SignalStorage
 
@@ -41,11 +42,11 @@ function SignalStorage:new(entity, event)
   }
   setmetatable(obj, self)
   if event.tags and event.tags["ucc-settings"] then
-    for _, t in pairs(event.tags["ucc-settings"].signals) do
-      for _, slot in pairs(t) do
-        obj:change_or_add_signal(slot.signal.signal, slot.signal.count, slot.state)
-      end
-    end
+    local src_settings = event.tags["ucc-settings"]
+    if not src_settings.label_backup then src_settings.label_backup = {} end
+    obj:copy_settings(src_settings)
+  else
+    obj:update_label_backup()
   end
   return obj
 end
@@ -59,7 +60,13 @@ function SignalStorage:destroy()
 end
 
 function SignalStorage:serialize()
-  return {["ucc-settings"] = {signals = table.deepcopy(self.signals)}}
+  return {
+  ["ucc-settings"] =
+    {
+      signals = table.deepcopy(self.signals),
+      label_backup = table.deepcopy(self.label_backup),
+    }
+  }
 end
 
 ---@param val boolean
@@ -124,7 +131,7 @@ local function occupy_storage_slot(obj, slot, inf_loop_protect)
   -- create storage
   if inf_loop_protect then return false end
   local main_entity = obj.entity
----@diagnostic disable-next-line: missing-fields
+  ---@diagnostic disable-next-line: missing-fields
   local store_entity = main_entity.surface.create_entity{
     name = "ucc-config-storage",
     position = main_entity.position,
@@ -246,14 +253,51 @@ end
 ---@param src_obj SignalStorage
 function SignalStorage:copy_settings(src_obj)
   self:clear_all_signals()
-  ---@diagnostic disable-next-line: undefined-field
-  self:set_main_state(src_obj.entity.get_control_behavior().enabled)
+  if src_obj.entity then
+    ---@diagnostic disable-next-line: undefined-field
+    self:set_main_state(src_obj.entity.get_control_behavior().enabled)
+  end
   self.signals = util.table.deepcopy(src_obj.signals)
   --repopulate internal combs
   for _, t in pairs(self.signals) do
     for _, slot in pairs(t) do ---@cast slot SignalStorage.Signal
       slot.store_pos = false
       occupy_storage_slot(self, slot)
+    end
+  end
+  for i, t in pairs(src_obj.label_backup) do
+    self.label_backup[i] = t
+  end
+end
+
+local function get_signal_sprite(signal)
+  if not signal.name then return end
+  if signal.type == "item" and game.item_prototypes[signal.name] then
+    return "item/" .. signal.name
+  elseif signal.type == "fluid" and game.fluid_prototypes[signal.name] then
+    return "fluid/" .. signal.name
+  elseif signal.type == "virtual" and game.virtual_signal_prototypes[signal.name] then
+    return "virtual-signal/" .. signal.name
+  end
+end
+
+function SignalStorage:update_label_backup()
+  self.label_backup = {}
+  local mcb = self.entity.get_control_behavior() ---@cast mcb LuaConstantCombinatorControlBehavior
+  for i = 1, 4 do
+    local signal = mcb.get_signal(i)
+    if signal.signal and signal.signal.name then
+      self.label_backup[i] = {signal = signal, sprite = get_signal_sprite(signal.signal)}
+    end
+  end
+end
+
+function SignalStorage:restore_labels()
+  local mcb = self.entity.get_control_behavior() ---@cast mcb LuaConstantCombinatorControlBehavior
+  for i = 1, 4 do
+    if self.label_backup[i] then
+      local status, err = pcall(mcb.set_signal, i, self.label_backup[i].signal)
+      if not status then self.label_backup[i] = nil end
     end
   end
 end

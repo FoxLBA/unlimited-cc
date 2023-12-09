@@ -193,15 +193,16 @@ function BigConstant.on_entity_settings_pasted(event)
   if (not dest) or (not dest.valid) then return end
   if dest.name ~= MAIN_NAME then return end
   local dest_cb = dest.get_control_behavior() ---@cast dest_cb LuaConstantCombinatorControlBehavior
-  dest_cb.parameters = nil
   if (not src) or (not src.valid) then return end
 
-  local dest_comb = global.combinators[dest.unit_number]
+  local dest_comb = global.combinators[dest.unit_number] ---@cast dest_comb SignalStorage
   if src.name == MAIN_NAME then
     src_comb = global.combinators[src.unit_number]
     dest_comb:copy_settings(src_comb)
   else
+    dest_cb.parameters = nil
     local res = dest_comb:add_signals(src.get_control_behavior(), true)
+    dest_comb:restore_labels()
     ---@diagnostic disable-next-line: missing-fields
     dest.surface.create_entity {name = "flying-text", position = dest.position, text = "Added: "..res[1].."; Updated: "..res[2], color = {1.0, 1.0, 1.0}}
   end
@@ -265,6 +266,7 @@ function BigConstant.on_gui_opened(event)
   --Status gui
   local s_sfow_2_1 = inner_frame_2.add{type = "flow"}
   local main_control_2_1_1 = s_sfow_2_1.add{type = "flow", direction = "vertical"}
+  main_control_2_1_1.style.right_margin = 8
   main_control_2_1_1.add{type = "label", caption = {"gui-constant.output"}}
   local main_switch_stale = "left"
   local mcb = comb.entity.get_control_behavior() ---@cast mcb LuaConstantCombinatorControlBehavior
@@ -277,16 +279,25 @@ function BigConstant.on_gui_opened(event)
     right_label_caption = {"gui-constant.on"},
     switch_state = main_switch_stale,
   }
-  main_control_2_1_1.add{
-    type = "label",
-    caption = {"ucc-gui.total-signals"},
-    --visible = false,
-  }
-  main_control_2_1_1.add{
-    type = "label",
-    caption = tostring(comb.total_space[1]),
-    --visible = false,
-  }
+  main_control_2_1_1.add{type = "label",caption = {"ucc-gui.total-signals"}}
+  main_control_2_1_1.add{type = "label",caption = tostring(comb.total_space[1])}
+
+  local icons_1_frame_2_1_1_5 = main_control_2_1_1.add{type = "flow"}
+  icons_1_frame_2_1_1_5.add{type = "sprite-button", style = "slot_button", tags = {["ucc-icon-index"] = 1}, tooltip = {"ucc-gui.remove-icon-tooltip"}}
+  icons_1_frame_2_1_1_5.add{type = "sprite-button", style = "slot_button", tags = {["ucc-icon-index"] = 2}, tooltip = {"ucc-gui.remove-icon-tooltip"}}
+
+  local icons_1_frame_2_1_1_6 = main_control_2_1_1.add{type = "flow"}
+  icons_1_frame_2_1_1_6.add{type = "sprite-button", style = "slot_button", tags = {["ucc-icon-index"] = 3}, tooltip = {"ucc-gui.remove-icon-tooltip"}}
+  icons_1_frame_2_1_1_6.add{type = "sprite-button", style = "slot_button", tags = {["ucc-icon-index"] = 4}, tooltip = {"ucc-gui.remove-icon-tooltip"}}
+
+  for i = 1, 4 do
+    local button_r_index = 5
+    if i > 2 then button_r_index = 6 end
+    if comb.label_backup[i] then
+      main_control_2_1_1.children[button_r_index].children[2 - i % 2].sprite = comb.label_backup[i].sprite
+    end
+  end
+
   local indicator_2_1_2 = s_sfow_2_1.add{type = "flow", direction = "vertical"}
   local status_flow_2_1_2_1 = indicator_2_1_2.add{type = "flow", style = "status_flow"}
   status_flow_2_1_2_1.style.vertical_align = "center"
@@ -295,7 +306,7 @@ function BigConstant.on_gui_opened(event)
   local preview_frame_2_1_2_2 = indicator_2_1_2.add{type = "frame", style = "entity_button_frame"}
   local preview = preview_frame_2_1_2_2.add{type = "entity-preview"}
   preview.entity = entity
-  preview.style.height = 148
+  preview.style.vertically_stretchable = true
   preview.style.horizontally_stretchable = true
 
   --Tabs
@@ -380,6 +391,8 @@ function BigConstant.on_gui_opened(event)
   select_flow_4_1.style.vertical_align = "center"
   local signal_button_4_1_1 = select_flow_4_1.add{
     type = "sprite-button",
+    name = "ucc-signal-add-icon",
+    tooltip = {"ucc-gui.add-icon-tooltip"},
     style = "slot_button",
     enabled = false,
   }
@@ -420,12 +433,16 @@ function BigConstant.on_gui_click(event)
   local name = event.element.name
   if name == "ucc-close" then
     BigConstant.destroy_gui(event.element)
+  elseif name == "ucc-signal-add-icon" then
+    BigConstant.add_icon_label(event.element)
   elseif name == "" and event.element.tags then
     local tags = event.element.tags
     if tags["ucc-tab-index"] then
       BigConstant.select_tab_by_index(event.element, tags["ucc-tab-index"])
     elseif tags["ucc-signal"] then
       BigConstant.on_signal_click(event.element)
+    elseif tags["ucc-icon-index"] then
+      BigConstant.remove_icon_label(event.element)
     end
   end
 end
@@ -579,6 +596,41 @@ function BigConstant.destroy_gui(element)
   local gui = element
   while gui.parent.name ~= "screen" do gui = gui.parent end
   gui.destroy()
+end
+
+function BigConstant.add_icon_label(element)
+  local gui = element
+  while gui.parent.name ~= "screen" do gui = gui.parent end
+  local comb = global.combinators[gui.tags["ucc-id"]] ---@cast comb SignalStorage
+  local index
+  for i = 1, 4 do
+    if not comb.label_backup[i] then
+      index = i
+      break
+    end
+  end
+  if not index then return end
+
+  local button_r_index = 5
+  if index > 2 then button_r_index = 6 end
+  local button = gui.children[2].children[1].children[1].children[button_r_index].children[2 - index % 2]
+  button.sprite = element.sprite
+  local signal = {signal = element.tags["ucc-selected-signal"].signal, count = 0}
+  comb.label_backup[index] = {signal = signal, sprite = element.tags["ucc-selected-signal"].sprite}
+  local mcb = comb.entity.get_control_behavior() ---@cast mcb LuaConstantCombinatorControlBehavior
+  mcb.set_signal(index, signal)
+end
+
+function BigConstant.remove_icon_label(element)
+  local gui = element
+  while gui.parent.name ~= "screen" do gui = gui.parent end
+  local comb = global.combinators[gui.tags["ucc-id"]] ---@cast comb SignalStorage
+  element.sprite = ""
+  local index = element.tags["ucc-icon-index"]
+  if not comb.label_backup[index] then return end
+  local mcb = comb.entity.get_control_behavior() ---@cast mcb LuaConstantCombinatorControlBehavior
+  mcb.set_signal(index, nil)
+  comb.label_backup[index] = nil
 end
 
 -- <<GUI functions/Tabs>>
